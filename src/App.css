@@ -1,0 +1,45 @@
+@font-face {
+  font-family: 'Russo One';
+  src: url('assets/RussoOne-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  --white: #f0f0f0;
+  --black: #1b1b1b;
+  --red: #f44336;
+  --blue: #0099ff;
+  --green: #56d364;
+
+  color: var(--white);
+  background-color: var(--black);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+
+  touch-action: pan-x pan-y;
+}
+
+* {
+  font-family: 'Russo One';
+  font-size: 1.75rem;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.app {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

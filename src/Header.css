@@ -1,0 +1,17 @@
+.header {
+  position: absolute;
+  top: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.title {
+  background: linear-gradient(to top, #0099ffd0, #00000000);
+  padding: 0px 30%;
+  clip-path: polygon(0% 0%, 100% 0%, 90% 100%, 10% 100%);
+}
+
+.title span {
+  font-size: 3rem;
+  font-style: italic;
+}

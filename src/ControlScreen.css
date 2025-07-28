@@ -1,0 +1,35 @@
+.control-screen {
+  width: 80%;
+  margin: 0;
+  padding-top: 10vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.circles {
+  display: flex;
+  justify-content: space-around;
+}
+
+.circle {
+  margin-bottom: 50px;
+  width: 300px;
+  aspect-ratio: 1;
+  border-radius: 100%;
+  display: grid;
+  align-items: center;
+}
+
+.cpu {
+  border: thin solid var(--red);
+  background: radial-gradient(transparent 60%, var(--red));
+  box-shadow: 0 0 20px 0 var(--red);
+}
+
+.fan {
+  border: thin solid var(--blue);
+  background: radial-gradient(transparent 60%, var(--blue));
+  box-shadow: 0 0 20px 0 var(--blue);
+}

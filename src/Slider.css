@@ -1,0 +1,17 @@
+.slider {
+    display: flex;
+    flex-direction: column;
+}
+
+
+input[type="range"] {
+    margin-top: 50px;
+    background: linear-gradient(to right, var(--green) 0%, var(--green) 50%, #fff 50%, #fff 100%);
+    box-shadow: 0 0 7px 0 var(--green);
+    border-radius: 7px;
+    height: 7px;
+    width: 100%;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
