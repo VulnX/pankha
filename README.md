@@ -8,7 +8,7 @@ A simple GUI utility for controlling and managing fan speed on the `HP OMEN by H
 
 ## 🖼️ Preview
 
-![Preview](./screenshot/preview.png)
+![Preview](./client/screenshot/preview.png)
 
 ---
 
