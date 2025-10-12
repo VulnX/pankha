@@ -26,7 +26,7 @@ struct file_operations *fops;
 
 // IOCTL HANDLER COMMANDS
 #define PANKHA_MAGIC 'P'
-#define GET_FAN_SPEED _IOR(PANKHA_MAGIC, 1, int)
+#define IOCTL_GET_FAN_SPEED _IOR(PANKHA_MAGIC, 1, int)
 
 static DEFINE_MUTEX(pankha_mutex);
 
@@ -55,7 +55,7 @@ static long pankha_ioctl(struct file *fp, unsigned int cmd, unsigned long arg) {
   res = 0;
   mutex_lock(&pankha_mutex);
   switch (cmd) {
-  case GET_FAN_SPEED:
+  case IOCTL_GET_FAN_SPEED:
     res = get_fan_speed((int *)arg);
     if (res < 0)
       goto out;
