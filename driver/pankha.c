@@ -1,13 +1,14 @@
 #include "asm-generic/errno-base.h"
+#include "linux/acpi.h"
 #include "linux/fs.h"
 #include "linux/gfp_types.h"
 #include "linux/miscdevice.h"
+#include "linux/module.h"
 #include "linux/printk.h"
 #include "linux/slab.h"
 #include "linux/stat.h"
 #include "linux/types.h"
 #include "linux/uaccess.h"
-#include <linux/module.h>
 
 #define MODULE_NAME "pankha"
 MODULE_LICENSE("GPL");
@@ -18,11 +19,14 @@ MODULE_DESCRIPTION("A device driver used to control fan speed on - HP OMEN by "
 struct miscdevice *misc;
 struct file_operations *fops;
 
+#define BIOS_FAN_SPEED 0x11
+
 static ssize_t pankha_read(struct file *fp, char __user *buf, size_t size,
                            loff_t __user *off) {
   int ret;
   char *msg;
   size_t len;
+  u8 speed;
   msg = "NOT IMPLEMENTED YET\n";
   len = strlen(msg);
   if (*off >= len) {
@@ -31,6 +35,12 @@ static ssize_t pankha_read(struct file *fp, char __user *buf, size_t size,
   if (*off + size > len) {
     size = len - *off;
   }
+  ret = ec_read(BIOS_FAN_SPEED, &speed);
+  if (ret) {
+    pr_err("[pankha] error reading fan speed\n");
+    return ret;
+  }
+  pr_info("[pankha] GOT FAN SPEED: %d\n", speed * 100);
   ret = copy_to_user(buf, msg, len);
   if (ret == 0) {
     *off += size;
