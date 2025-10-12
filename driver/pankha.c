@@ -23,16 +23,20 @@ struct file_operations *fops;
 
 // EC REGISTER MAPPINGS
 #define REG_FAN_SPEED 0x11
+#define REG_CONTROLLER 0x15
 
 // IOCTL HANDLER COMMANDS
 #define PANKHA_MAGIC 'P'
 #define IOCTL_GET_FAN_SPEED _IOR(PANKHA_MAGIC, 1, int)
+#define IOCTL_GET_CONTROLLER _IOR(PANKHA_MAGIC, 2, int)
 
 static DEFINE_MUTEX(pankha_mutex);
 
-// Helper function definitions
+// Helper function declaration
 int get_fan_speed(int __user *addr);
+int get_controller(int __user *addr);
 
+// Helper function definition
 int get_fan_speed(int __user *addr) {
   u8 byte;
   int speed, err, ret;
@@ -50,6 +54,22 @@ int get_fan_speed(int __user *addr) {
   return 0;
 }
 
+int get_controller(int __user *addr) {
+  u8 byte;
+  int err, ret;
+  err = ec_read(REG_CONTROLLER, &byte);
+  if (err) {
+    pr_err("[pankha] error reading controller\n");
+    return err;
+  }
+  ret = copy_to_user(addr, &byte, sizeof(byte));
+  if (ret != 0) {
+    pr_err("[pankha] failed to copy controller to userspace\n");
+    return -EFAULT;
+  }
+  return 0;
+}
+
 static long pankha_ioctl(struct file *fp, unsigned int cmd, unsigned long arg) {
   int res;
   res = 0;
@@ -57,6 +77,11 @@ static long pankha_ioctl(struct file *fp, unsigned int cmd, unsigned long arg) {
   switch (cmd) {
   case IOCTL_GET_FAN_SPEED:
     res = get_fan_speed((int *)arg);
+    if (res < 0)
+      goto out;
+    break;
+  case IOCTL_GET_CONTROLLER:
+    res = get_controller((int *)arg);
     if (res < 0)
       goto out;
     break;
