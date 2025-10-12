@@ -1,13 +1,15 @@
 #include "asm-generic/errno-base.h"
+#include "asm-generic/ioctl.h"
 #include "linux/acpi.h"
 #include "linux/fs.h"
 #include "linux/gfp_types.h"
+#include "linux/init.h"
 #include "linux/miscdevice.h"
 #include "linux/module.h"
+#include "linux/mutex.h"
 #include "linux/printk.h"
 #include "linux/slab.h"
 #include "linux/stat.h"
-#include "linux/types.h"
 #include "linux/uaccess.h"
 
 #define MODULE_NAME "pankha"
@@ -19,71 +21,75 @@ MODULE_DESCRIPTION("A device driver used to control fan speed on - HP OMEN by "
 struct miscdevice *misc;
 struct file_operations *fops;
 
-#define BIOS_FAN_SPEED 0x11
+// EC REGISTER MAPPINGS
+#define REG_FAN_SPEED 0x11
 
-static ssize_t pankha_read(struct file *fp, char __user *buf, size_t size,
-                           loff_t __user *off) {
-  int ret;
-  char *msg;
-  size_t len;
-  u8 speed;
-  msg = "NOT IMPLEMENTED YET\n";
-  len = strlen(msg);
-  if (*off >= len) {
-    return 0;
-  }
-  if (*off + size > len) {
-    size = len - *off;
-  }
-  ret = ec_read(BIOS_FAN_SPEED, &speed);
-  if (ret) {
+// IOCTL HANDLER COMMANDS
+#define PANKHA_MAGIC 'P'
+#define GET_FAN_SPEED _IOR(PANKHA_MAGIC, 1, int)
+
+static DEFINE_MUTEX(pankha_mutex);
+
+// Helper function definitions
+int get_fan_speed(int __user *addr);
+
+int get_fan_speed(int __user *addr) {
+  u8 byte;
+  int speed, err, ret;
+  err = ec_read(REG_FAN_SPEED, &byte);
+  if (err) {
     pr_err("[pankha] error reading fan speed\n");
-    return ret;
+    return err;
   }
-  pr_info("[pankha] GOT FAN SPEED: %d\n", speed * 100);
-  ret = copy_to_user(buf, msg, len);
-  if (ret == 0) {
-    *off += size;
+  speed = byte * 100; // Convert u8 byte to RPM
+  ret = copy_to_user(addr, &speed, sizeof(speed));
+  if (ret != 0) {
+    pr_err("[pankha] failed to copy fan speed to userspace\n");
+    return -EFAULT;
   }
-  return len - ret;
+  return 0;
 }
 
-static ssize_t pankha_write(struct file *fp, const char __user *buf,
-                            size_t size, loff_t __user *off) {
-  int ret;
-  char *buffer;
-  buffer = kzalloc(size, GFP_KERNEL);
-  if (buffer == NULL) {
-    pr_err("[pankha] failed to allocate memory to read userspace\n");
-    return -ENOMEM;
+static long pankha_ioctl(struct file *fp, unsigned int cmd, unsigned long arg) {
+  int res;
+  res = 0;
+  mutex_lock(&pankha_mutex);
+  switch (cmd) {
+  case GET_FAN_SPEED:
+    res = get_fan_speed((int *)arg);
+    if (res < 0)
+      goto out;
+    break;
+  default:
+    pr_err("[pankha] Invalid ioctl cmd: %u\n", cmd);
+    res = -EINVAL;
+    goto out;
   }
-  ret = copy_from_user(buffer, buf, size);
-  pr_info("[pankha] received \"%s\" from userspace\n", buffer);
-  kfree(buffer);
-  buffer = NULL;
-  return size - ret;
+out:
+  mutex_unlock(&pankha_mutex);
+  return res;
 }
 
 static int __init pankha_init(void) {
   int ret;
   misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
   if (misc == NULL) {
-    pr_err("[pankha] failed to allocate memory for miscdevice");
+    pr_err("[pankha] failed to allocate memory for miscdevice\n");
     return -ENOMEM;
   }
   fops = kzalloc(sizeof(struct file_operations), GFP_KERNEL);
   if (fops == NULL) {
-    pr_err("[pankha] failed to allocate memory for fops");
+    pr_err("[pankha] failed to allocate memory for fops\n");
     return -ENOMEM;
   }
   misc->name = MODULE_NAME;
   misc->mode = S_IRUGO | S_IWUGO;
   misc->fops = fops;
-  fops->read = pankha_read;
-  fops->write = pankha_write;
+  fops->owner = THIS_MODULE;
+  fops->unlocked_ioctl = pankha_ioctl;
   ret = misc_register(misc);
   if (ret < 0) {
-    pr_err("[pankha] failed to register miscdevice");
+    pr_err("[pankha] failed to register miscdevice\n");
     kfree(misc);
     kfree(fops);
     return ret;
