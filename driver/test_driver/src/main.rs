@@ -2,6 +2,7 @@ use std::{fs::File, io::stdin, os::fd::AsRawFd, process::exit};
 
 const IOCTL_GET_FAN_SPEED: u64 = 0x80045001;
 const IOCTL_GET_CONTROLLER: u64 = 0x80045002;
+const IOCTL_SET_CONTROLLER: u64 = 0x40045003;
 
 fn get_fan_speed() {
     let file = File::open("/dev/pankha").expect("failed to open device");
@@ -31,15 +32,33 @@ fn get_controller() {
     }
 }
 
-fn menu() -> i32 {
+fn set_controller() {
+    let file = File::open("/dev/pankha").expect("failed to open device");
+    let fd = file.as_raw_fd();
+    println!("Controller:");
+    let controller = get_int();
+    let res = unsafe { libc::ioctl(fd, IOCTL_SET_CONTROLLER, controller) };
+    if res < 0 {
+        eprintln!("Failed to set controller");
+        exit(res);
+    }
+    println!("Successfully set controller to {controller}");
+}
+
+fn get_int() -> i32 {
     let mut s = String::new();
+    stdin().read_line(&mut s).expect("failed to read");
+    s.trim().parse::<i32>().expect("not an integer")
+}
+
+fn menu() -> i32 {
     println!("OPTIONS");
     println!("[0] Exit");
     println!("[1] Get fan speed");
     println!("[2] Get controller");
+    println!("[3] Set controller");
     println!("Choice:");
-    stdin().read_line(&mut s).expect("failed to read");
-    s.trim().parse::<i32>().expect("not an integer")
+    get_int()
 }
 
 fn main() {
@@ -49,6 +68,7 @@ fn main() {
             0 => break,
             1 => get_fan_speed(),
             2 => get_controller(),
+            3 => set_controller(),
             _ => unimplemented!(),
         }
     }
