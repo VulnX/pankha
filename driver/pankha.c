@@ -26,7 +26,7 @@ struct file_operations *fops;
 #define REG_CONTROLLER 0x15
 #define REG_SET_FAN_SPEED 0x19
 
-#define MAX_FAN_SPEED 6000
+#define MAX_FAN_SPEED 5500
 #define BIOS_CONTROLLER 0
 #define USER_CONTROLLER 1
 
@@ -39,6 +39,7 @@ struct file_operations *fops;
 #define IOCTL_GET_FAN_SPEED _IOR(PANKHA_MAGIC, 1, int)
 #define IOCTL_GET_CONTROLLER _IOR(PANKHA_MAGIC, 2, int)
 #define IOCTL_SET_CONTROLLER _IOW(PANKHA_MAGIC, 3, int)
+#define IOCTL_SET_FAN_SPEED _IOW(PANKHA_MAGIC, 4, int)
 
 static DEFINE_MUTEX(pankha_mutex);
 
@@ -47,7 +48,7 @@ int _int_get_fan_speed(void);
 int get_fan_speed(int __user *addr);
 int get_controller(int __user *addr);
 int set_controller(int controller);
-int _int_set_fan_speed(int speed);
+int set_fan_speed(int speed);
 
 // HELPER FUNCTION DEFINITIONS
 int _int_get_fan_speed(void) {
@@ -108,22 +109,23 @@ int set_controller(int controller) {
     if (res < 0)
       return res;
     speed = res;
-    err = _int_set_fan_speed(speed);
+    err = set_fan_speed(speed);
     if (err)
       return err;
   }
   err = ec_write(REG_CONTROLLER, controller);
-  if (err != 0) {
+  if (err) {
     pr_err("[pankha] failed to change controller\n");
     return err;
   }
   return 0;
 }
 
-int _int_set_fan_speed(int speed) {
+int set_fan_speed(int speed) {
   u8 byte;
   int err;
   if (speed < 0 || MAX_FAN_SPEED < speed) {
+    pr_err("[pankha] invalid fan speed range\n");
     return -EINVAL;
   }
   byte = RPM_TO_BYTE(speed);
@@ -152,6 +154,11 @@ static long pankha_ioctl(struct file *fp, unsigned int cmd, unsigned long arg) {
     break;
   case IOCTL_SET_CONTROLLER:
     err = set_controller(arg);
+    if (err)
+      goto out;
+    break;
+  case IOCTL_SET_FAN_SPEED:
+    err = set_fan_speed(arg);
     if (err)
       goto out;
     break;

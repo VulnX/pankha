@@ -3,6 +3,7 @@ use std::{fs::File, io::stdin, os::fd::AsRawFd, process::exit};
 const IOCTL_GET_FAN_SPEED: u64 = 0x80045001;
 const IOCTL_GET_CONTROLLER: u64 = 0x80045002;
 const IOCTL_SET_CONTROLLER: u64 = 0x40045003;
+const IOCTL_SET_FAN_SPEED: u64 = 0x40045004;
 
 fn get_fan_speed() {
     let file = File::open("/dev/pankha").expect("failed to open device");
@@ -45,6 +46,19 @@ fn set_controller() {
     println!("Successfully set controller to {controller}");
 }
 
+fn set_fan_speed() {
+    let file = File::open("/dev/pankha").expect("failed to open device");
+    let fd = file.as_raw_fd();
+    println!("Speed:");
+    let speed = get_int();
+    let res = unsafe { libc::ioctl(fd, IOCTL_SET_FAN_SPEED, speed) };
+    if res < 0 {
+        eprintln!("Failed to set speed");
+        exit(res);
+    }
+    println!("Successfully set speed to {speed}");
+}
+
 fn get_int() -> i32 {
     let mut s = String::new();
     stdin().read_line(&mut s).expect("failed to read");
@@ -57,6 +71,7 @@ fn menu() -> i32 {
     println!("[1] Get fan speed");
     println!("[2] Get controller");
     println!("[3] Set controller");
+    println!("[4] Set fan speed");
     println!("Choice:");
     get_int()
 }
@@ -69,6 +84,7 @@ fn main() {
             1 => get_fan_speed(),
             2 => get_controller(),
             3 => set_controller(),
+            4 => set_fan_speed(),
             _ => unimplemented!(),
         }
     }
