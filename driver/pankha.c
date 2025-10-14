@@ -11,6 +11,7 @@
 #include "linux/slab.h"
 #include "linux/stat.h"
 #include "linux/uaccess.h"
+#include "linux/dmi.h"
 
 #define MODULE_NAME "pankha"
 MODULE_LICENSE("GPL");
@@ -42,6 +43,16 @@ struct file_operations *fops;
 #define IOCTL_SET_FAN_SPEED _IOW(PANKHA_MAGIC, 4, int)
 
 static DEFINE_MUTEX(pankha_mutex);
+
+const struct dmi_system_id pankha_whitelist[] = {
+  {
+    .ident = "Supported boards",
+    .matches = {
+      DMI_MATCH(DMI_BOARD_NAME, "8C78")
+    },
+  },
+  {}
+};
 
 // HELPER FUNCTION DECLARATIONS
 int _int_get_fan_speed(void);
@@ -174,6 +185,10 @@ out:
 
 static int __init pankha_init(void) {
   int ret;
+  if (!dmi_check_system(pankha_whitelist)) {
+    pr_err("[pankha] unsupported device: %s\n", dmi_get_system_info(DMI_BOARD_NAME));
+    return -ENODEV;
+  }
   misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
   if (misc == NULL) {
     pr_err("[pankha] failed to allocate memory for miscdevice\n");
