@@ -14,4 +14,9 @@ input[type="range"] {
     outline: none;
     -webkit-appearance: none;
     appearance: none;
+    cursor: pointer;
+}
+
+input[type="range"]:disabled {
+    cursor: not-allowed;
 }

@@ -13,7 +13,6 @@ function Slider({ sliderRef, rpmSliderValue, sliderDisabled, handleSliderChange,
 
     return (
         <div className="slider">
-            <label>RPM: {rpmSliderValue}</label>
             <input
                 type="range"
                 min="0"

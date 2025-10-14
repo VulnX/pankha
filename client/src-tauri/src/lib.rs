@@ -6,11 +6,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            util::is_root,
-            util::is_ec_sys_loaded,
-            util::load_ec_sys_with_write_support,
+            util::ensure_pankha,
             util::get_cpu_temp,
-            util::start_periodic_cpu_temp_fetcher,
+            util::start_periodic_data_fetcher,
+            util::get_controller,
+            util::set_controller,
             util::get_fan_rpm,
             util::set_fan_rpm,
         ])

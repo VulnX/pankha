@@ -9,7 +9,7 @@ import { Window } from "@tauri-apps/api/window";
 function App() {
 
   const hasRun = useRef(false);
-  const [isECSysLoaded, setIsECSysLoaded] = useState(false);
+  const [isPankhaLoaded, setIsPankhaLoaded] = useState(false);
 
   function stop(msg: string) {
     message(msg).then(() => {
@@ -17,41 +17,22 @@ function App() {
     });
   }
 
-  function loadECSys() {
-    invoke('load_ec_sys_with_write_support')
-      .catch(e => stop(`Failed to load ec_sys : ${e}`));
-  }
-
-  function ensureECSysLoaded() {
-    invoke('is_ec_sys_loaded')
-      .then(loaded => {
-        if (!loaded) {
-          loadECSys();
-        }
-        setIsECSysLoaded(true);
+  function ensurePankhaLoaded() {
+    invoke('ensure_pankha')
+      .then(() => {
+        setIsPankhaLoaded(true);
       })
-      .catch(e => stop(`Failed to check if ec_sys is loaded : ${e}`));
+      .catch(e => stop(`Failed to check if pankha is loaded : ${e}`));
   }
 
-  function ensureRoot() {
-    invoke('is_root')
-      .then(root => {
-        if (!root) {
-          stop('Please run this application as root');
-        }
-      });
-  }
-
-  function startPeriodicCPUTempFetcher() {
-    invoke('start_periodic_cpu_temp_fetcher');
+  function startPeriodicDataFetcher() {
+    invoke('start_periodic_data_fetcher');
   }
 
   useEffect(() => {
     if (!hasRun.current) {
-      ensureRoot();
-      ensureECSysLoaded();
-      startPeriodicCPUTempFetcher();
-
+      ensurePankhaLoaded();
+      startPeriodicDataFetcher();
       hasRun.current = true;
     }
   }, []);
@@ -59,7 +40,7 @@ function App() {
   return (
     <div className="app">
       <Header />
-      {isECSysLoaded && <ControlScreen />}
+      {isPankhaLoaded && <ControlScreen />}
     </div>
   );
 }

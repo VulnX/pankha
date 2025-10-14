@@ -1,115 +1,125 @@
-#![allow(dead_code)]
 use std::{
     cmp::{max, min},
-    fs::{self, OpenOptions},
-    io::{Read, Seek, SeekFrom, Write},
-    process::Command,
+    ffi::c_int,
+    fs::File,
+    os::fd::AsRawFd,
+    sync::Mutex,
     thread::{self, sleep},
     time::Duration,
 };
 
 use tauri::{Emitter, Runtime};
 
-extern "C" {
-    fn getuid() -> u32;
-}
+static PANKHA_FD: Mutex<Option<File>> = Mutex::new(None);
 
+#[allow(dead_code)]
 #[tauri::command]
-pub fn is_root() -> bool {
-    let uid = unsafe { getuid() };
-    uid == 0
-}
-
-#[tauri::command]
-pub fn is_ec_sys_loaded() -> bool {
-    fs::read_to_string("/proc/modules")
-        .map(|contents| contents.contains("ec_sys"))
-        .unwrap_or(false)
-}
-
-#[tauri::command]
-pub fn load_ec_sys_with_write_support() -> Result<(), String> {
-    let status = Command::new("modprobe")
-        .arg("ec_sys")
-        .arg("write_support=1")
-        .status()
-        .map_err(|e| e.to_string())?;
-
-    if !status.success() {
-        return Err("Failed to load ec_sys".into());
+pub fn ensure_pankha() -> Result<(), String> {
+    let result = File::open("/dev/pankha");
+    match result {
+        Ok(file) => {
+            let mut handle = PANKHA_FD.lock().unwrap();
+            *handle = Some(file);
+            Ok(())
+        }
+        Err(e) => Err(e.to_string()),
     }
-
-    Ok(())
 }
 
+#[allow(dead_code)]
 #[tauri::command]
 pub fn get_cpu_temp() -> i32 {
     let sensors = lm_sensors::Initializer::default().initialize().unwrap();
 
-        let coretemp_chip = sensors
-            .chip_iter(None)
-            .find(|chip| chip.to_string() == "coretemp-isa-0000")
-            .unwrap();
+    let coretemp_chip = sensors
+        .chip_iter(None)
+        .find(|chip| chip.to_string() == "coretemp-isa-0000")
+        .unwrap();
 
-        let package_feature = coretemp_chip
-            .feature_iter()
-            .find(|f| f.to_string() == "Package id 0")
-            .unwrap();
+    let package_feature = coretemp_chip
+        .feature_iter()
+        .find(|f| f.to_string() == "Package id 0")
+        .unwrap();
 
-        let temp_sub_feature = package_feature
-            .sub_feature_iter()
-            .find(|s| s.to_string() == "temp1_input")
-            .unwrap();
+    let temp_sub_feature = package_feature
+        .sub_feature_iter()
+        .find(|s| s.to_string() == "temp1_input")
+        .unwrap();
 
-        let cpu_temp = temp_sub_feature
-            .value()
-            .unwrap()
-            .to_string()
-            .split_whitespace()
-            .next()
-            .and_then(|s| s.parse::<i32>().ok())
-            .unwrap_or(-1);
+    let cpu_temp = temp_sub_feature
+        .value()
+        .unwrap()
+        .to_string()
+        .split_whitespace()
+        .next()
+        .and_then(|s| s.parse::<i32>().ok())
+        .unwrap_or(-1);
 
-        cpu_temp
+    cpu_temp
 }
 
-const CPU_TEMP_FETCHER_FREQ: Duration = Duration::from_secs(5);
+const DATA_FETCHER_FREQ: Duration = Duration::from_secs(1);
 
+#[allow(dead_code)]
 #[tauri::command]
-pub fn start_periodic_cpu_temp_fetcher<R: Runtime>(window: tauri::Window<R>) {
+pub fn start_periodic_data_fetcher<R: Runtime>(window: tauri::Window<R>) {
+    let cpu_temp_window = window.clone();
+    let fan_rpm_window = window.clone();
     thread::spawn(move || loop {
+        sleep(DATA_FETCHER_FREQ);
         let cpu_temp = get_cpu_temp();
-        window.emit("cpu_temp", cpu_temp).unwrap();
-
-        sleep(CPU_TEMP_FETCHER_FREQ);
+        cpu_temp_window.emit("cpu_temp", cpu_temp).unwrap();
+    });
+    thread::spawn(move || loop {
+        sleep(DATA_FETCHER_FREQ);
+        let fan_rpm = get_fan_rpm().unwrap();
+        fan_rpm_window.emit("fan_rpm", fan_rpm).unwrap();
     });
 }
 
-const ECIO_PATH: &str = "/sys/kernel/debug/ec/ec0/io";
-const OFFSET_FAN_STATUS: u64 = 21;
-const OFFSET_FAN_SPEED: u64 = 25;
-const FAN_OFF: u8 = 0;
-const FAN_ON: u8 = 0xff;
 const RPM_MAX: u64 = 5500;
-const SPEED_CHANGE_DELAY: Duration = Duration::from_secs(2);
+const SPEED_CHANGE_DELAY: Duration = Duration::from_secs(1);
 const FAN_SPEED_STEP: u64 = 500;
+const IOCTL_GET_FAN_SPEED: u64 = 0x80045001;
+const IOCTL_GET_CONTROLLER: u64 = 0x80045002;
+const IOCTL_SET_CONTROLLER: u64 = 0x40045003;
+const IOCTL_SET_FAN_SPEED: u64 = 0x40045004;
 
+#[allow(dead_code)]
 #[tauri::command]
-pub fn get_fan_rpm() -> u64 {
-    let mut file = OpenOptions::new().read(true).open(ECIO_PATH).unwrap();
-    let mut buffer = [0u8; 1];
-
-    file.seek(SeekFrom::Start(OFFSET_FAN_STATUS)).unwrap();
-    file.read_exact(&mut buffer).unwrap();
-    if buffer[0] == FAN_OFF {
-        return 0;
+pub fn get_controller() -> Result<i32, String> {
+    let fd = get_fd()?;
+    let mut controller: i32 = 0;
+    let res = unsafe { libc::ioctl(fd, IOCTL_GET_CONTROLLER, &mut controller) };
+    if res < 0 {
+        return Err("Failed to get controller".into());
     }
-
-    file.seek(SeekFrom::Start(OFFSET_FAN_SPEED)).unwrap();
-    file.read_exact(&mut buffer).unwrap();
-    buffer[0] as u64 * 100
+    Ok(controller)
 }
 
+#[allow(dead_code)]
+#[tauri::command]
+pub fn set_controller(controller: i32) -> Result<(), String> {
+    let fd = get_fd()?;
+    let res = unsafe { libc::ioctl(fd, IOCTL_SET_CONTROLLER, controller) };
+    if res < 0 {
+        return Err("Failed to set controller".into());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_fan_rpm() -> Result<u64, String> {
+    let fd = get_fd()?;
+    let mut speed: u64 = 0;
+    let res = unsafe { libc::ioctl(fd, IOCTL_GET_FAN_SPEED, &mut speed) };
+    if res < 0 {
+        return Err("Failed to get fan rpm".into());
+    }
+    Ok(speed)
+}
+
+#[allow(dead_code)]
 #[tauri::command]
 pub fn set_fan_rpm<R: Runtime>(window: tauri::Window<R>, rpm: u64) -> Result<(), String> {
     if rpm % 500 != 0 {
@@ -120,7 +130,7 @@ pub fn set_fan_rpm<R: Runtime>(window: tauri::Window<R>, rpm: u64) -> Result<(),
         return Err("rpm cannot exceed RPM_MAX".into());
     }
 
-    let mut current_rpm = get_fan_rpm();
+    let mut current_rpm = get_fan_rpm()?;
 
     // Handle in new thread to ensure early return
     // This allows for dynamic updates of event in react
@@ -132,8 +142,7 @@ pub fn set_fan_rpm<R: Runtime>(window: tauri::Window<R>, rpm: u64) -> Result<(),
             } else {
                 current_rpm = max(rpm, current_rpm.saturating_sub(FAN_SPEED_STEP));
             }
-            inner_set_fan_rpm((current_rpm / 100) as u8);
-            window.emit("fan_speed", current_rpm).unwrap();
+            inner_set_fan_rpm(current_rpm).unwrap();
         }
         window.emit("release_btn_lock", ()).unwrap();
     });
@@ -141,12 +150,19 @@ pub fn set_fan_rpm<R: Runtime>(window: tauri::Window<R>, rpm: u64) -> Result<(),
     Ok(())
 }
 
-fn inner_set_fan_rpm(rpm: u8) {
-    let mut file = OpenOptions::new().write(true).open(ECIO_PATH).unwrap();
-    file.seek(SeekFrom::Start(OFFSET_FAN_STATUS)).unwrap();
-    file.write_all(&[FAN_ON]).unwrap();
-    file.flush().unwrap();
-    file.seek(SeekFrom::Start(OFFSET_FAN_SPEED)).unwrap();
-    file.write_all(&[rpm]).unwrap();
-    file.flush().unwrap();
+fn inner_set_fan_rpm(rpm: u64) -> Result<(), String> {
+    let fd = get_fd()?;
+    let res = unsafe { libc::ioctl(fd, IOCTL_SET_FAN_SPEED, rpm as c_int) };
+    if res < 0 {
+        return Err("Failed to set speed".into());
+    }
+    Ok(())
+}
+
+fn get_fd() -> Result<i32, String> {
+    let guard = PANKHA_FD.lock().unwrap();
+    let Some(ref file) = *guard else {
+        return Err("Failed to get fd".into());
+    };
+    Ok(file.as_raw_fd())
 }
