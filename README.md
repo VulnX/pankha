@@ -2,11 +2,7 @@
 
 A low-level utility for manual fan speed control on the `HP OMEN by HP Gaming Laptop 16-wf1xxx`.
 
-
-
 > ⚠️ **DISCLAIMER**: This tool has only been tested on **my** device. The `EC registers` are almost certainly different on other laptop models. **Use at your own risk.**
-
-
 
 ## Preview
 
@@ -14,7 +10,7 @@ A low-level utility for manual fan speed control on the `HP OMEN by HP Gaming La
 
 ## Installation
 
-- TODO
+See [INSTALL.md](INSTALL.md)
 
 ## How It Works
 
