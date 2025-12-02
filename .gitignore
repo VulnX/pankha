@@ -24,3 +24,14 @@ dist-ssr
 *.sw?
 
 .cache
+
+# build files
+*.cmd
+*.o
+*.mod
+*.mod.*
+Module.symvers
+modules.order
+
+# kernel module
+*.ko
