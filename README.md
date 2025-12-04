@@ -1,12 +1,21 @@
 # pankha
 
-A low-level utility for manual fan speed control on the `HP OMEN by HP Gaming Laptop 16-wf1xxx`.
+A low-level utility for manual fan speed control on the `HP OMEN 16 Gaming Laptop`.
 
-> ⚠️ **DISCLAIMER**: This tool has only been tested on **my** device. The `EC registers` are almost certainly different on other laptop models. **Use at your own risk.**
+> ⚠️ **DISCLAIMER**: Please follow the support device list strictly. The `EC registers` are almost certainly different on other laptop models. **Use at your own risk.**
 
 ## Preview
 
 ![Preview](./client/screenshot/preview.png)
+
+## Supported Devices
+
+| Device | DMI Board ID | Tested by |
+| ------ | ------------ | --------- |
+| wf1xxx | `8C78`       | @VulnX    |
+| wf0xxx | `8BAB`       | @PXG-XPG  |
+
+>  NOTE: If your board is not listed above and you want support to be added, feel free to open an issue.
 
 ## Installation
 
@@ -38,10 +47,6 @@ See [INSTALL.md](INSTALL.md)
      - Example: `0x1E` = `3000 RPM`.
      - **Safety limit:** The app restricts speed to a max of **5500 RPM** to avoid *(potential)* fan damage, although not needed.
 
-## 📎 Notes
-
-- Tested only on `HP OMEN 16-wf1xxx` series.
-
-## 🛠️ TODO
+## TODO
 
 - [ ] Feature: auto-adjust fan speed based on temperature
