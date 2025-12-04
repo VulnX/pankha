@@ -46,10 +46,16 @@ static DEFINE_MUTEX(pankha_mutex);
 
 const struct dmi_system_id pankha_whitelist[] = {
     {
-        .ident = "Supported boards",
+        .ident = "HP Omen 16-wf1xxx",
         .matches =
             {
                 DMI_MATCH(DMI_BOARD_NAME, "8C78"),
+            },
+    },
+    {
+        .ident = "HP Omen 16-wf0xxx",
+        .matches =
+            {
                 DMI_MATCH(DMI_BOARD_NAME, "8BAB"),
             },
     },
