@@ -10,10 +10,11 @@ A low-level utility for manual fan speed control on the `HP OMEN 16 Gaming Lapto
 
 ## Supported Devices
 
-| Device | DMI Board ID | Tested by |
-| ------ | ------------ | --------- |
-| wf1xxx | `8C78`       | @VulnX    |
-| wf0xxx | `8BAB`       | @PXG-XPG  |
+| Device | DMI Board ID | Tested by     |
+| ------ | ------------ | ------------- |
+| wf1xxx | `8C78`       | @VulnX        |
+| wf0xxx | `8BAB`       | @PXG-XPG      |
+| xd0xxx | `8BCD`       | @varad-pisale |
 
 >  NOTE: If your board is not listed above and you want support to be added, feel free to open an issue.
 
@@ -23,7 +24,7 @@ See [INSTALL.md](INSTALL.md)
 
 ## How It Works
 
-- CPU temperature is detected using the [`lm-sensors`](https://crates.io/crates/lm-sensors) crate.
+- CPU temperature is detected via hwmon.
 - Fan speed is read/controlled via IOCTLs through a custom device driver, providing a safe abstraction over EC registers.
 - It auto-updates every second.
 
