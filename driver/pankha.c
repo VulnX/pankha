@@ -59,6 +59,13 @@ const struct dmi_system_id pankha_whitelist[] = {
                 DMI_MATCH(DMI_BOARD_NAME, "8BAB"),
             },
     },
+    {
+        .ident = "HP Omen 16-xd0015AX",
+        .matches =
+            {
+                DMI_MATCH(DMI_BOARD_NAME, "8BCD"),
+            },
+    },
     {}};
 
 // HELPER FUNCTION DECLARATIONS
