@@ -1,7 +1,7 @@
 use std::{
     cmp::{max, min},
     ffi::c_int,
-    fs::File,
+    fs::{self, File},
     os::fd::AsRawFd,
     sync::Mutex,
     thread::{self, sleep},
@@ -28,34 +28,17 @@ pub fn ensure_pankha() -> Result<(), String> {
 
 #[allow(dead_code)]
 #[tauri::command]
-pub fn get_cpu_temp() -> i32 {
-    let sensors = lm_sensors::Initializer::default().initialize().unwrap();
-
-    let coretemp_chip = sensors
-        .chip_iter(None)
-        .find(|chip| chip.to_string() == "coretemp-isa-0000")
-        .unwrap();
-
-    let package_feature = coretemp_chip
-        .feature_iter()
-        .find(|f| f.to_string() == "Package id 0")
-        .unwrap();
-
-    let temp_sub_feature = package_feature
-        .sub_feature_iter()
-        .find(|s| s.to_string() == "temp1_input")
-        .unwrap();
-
-    let cpu_temp = temp_sub_feature
-        .value()
-        .unwrap()
-        .to_string()
-        .split_whitespace()
-        .next()
-        .and_then(|s| s.parse::<i32>().ok())
-        .unwrap_or(-1);
-
-    cpu_temp
+pub fn get_cpu_temp() -> Option<f32> {
+    let hwmons = fs::read_dir("/sys/class/hwmon").ok()?;
+    for hwmon in hwmons.flatten() {
+        let name = fs::read_to_string(hwmon.path().join("name")).ok()?;
+        if name.contains("coretemp") || name.contains("k10temp") {
+            let temp = fs::read_to_string(hwmon.path().join("temp1_input")).ok()?;
+            let temp: f32 = temp.trim().parse().ok()?;
+            return Some(temp / 1000.0);
+        }
+    }
+    None
 }
 
 const DATA_FETCHER_FREQ: Duration = Duration::from_secs(1);
