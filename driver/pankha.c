@@ -99,10 +99,10 @@ const struct dmi_system_id pankha_whitelist[] = {
         .driver_data = (void *)&type1_ec,
     },
     {
-        .ident = "Omen Transcend 14",
+        .ident = "HP Omen 16-ap0097ax",
         .matches =
             {
-                DMI_MATCH(DMI_BOARD_NAME, "8C58"),
+                DMI_MATCH(DMI_BOARD_NAME, "8E35"),
             },
         .driver_data = (void *)&type2_ec,
     },
@@ -161,14 +161,14 @@ int get_controller(int __user *addr) {
   return 0;
 }
 
-int set_controller(int controller) {
-  int err, res, speed;
+int set_controller(int manual) {
+  int controller, err, res, speed;
 
-  if (controller != ec->controllers.bios_controller &&
-      controller != ec->controllers.user_controller) {
-    pr_err("[pankha] invalid controller\n");
-    return -EINVAL;
-  }
+  if (manual)
+    controller = ec->controllers.user_controller;
+  else
+    controller = ec->controllers.bios_controller;
+
   /**
    * IMPORTANT: If setting controller to USER then copy the current fan speed to
    * user-controlled fan speed register before changing the controller as the
