@@ -98,6 +98,14 @@ const struct dmi_system_id pankha_whitelist[] = {
             },
         .driver_data = (void *)&type1_ec,
     },
+    {
+        .ident = "Omen Transcend 14",
+        .matches =
+            {
+                DMI_MATCH(DMI_BOARD_NAME, "8C58"),
+            },
+        .driver_data = (void *)&type2_ec,
+    },
     {}};
 
 /* Helper function declarations */
