@@ -6,6 +6,7 @@
 #include "linux/gfp_types.h"
 #include "linux/init.h"
 #include "linux/miscdevice.h"
+#include "linux/mod_devicetable.h"
 #include "linux/module.h"
 #include "linux/mutex.h"
 #include "linux/printk.h"
@@ -16,26 +17,54 @@
 #define MODULE_NAME "pankha"
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("VulnX");
-MODULE_DESCRIPTION("A device driver used to control fan speed on the HP OMEN "
-                   "16 Gaming Laptop");
+MODULE_DESCRIPTION(
+    "A device driver used to control fan speed on the HP OMEN Gaming Laptop");
 
 struct miscdevice *misc;
 struct file_operations *fops;
 
-// EC REGISTER MAPPINGS
-#define REG_GET_FAN_SPEED 0x11
-#define REG_CONTROLLER 0x15
-#define REG_SET_FAN_SPEED 0x19
-
 #define MAX_FAN_SPEED 5500
-#define BIOS_CONTROLLER 0
-#define USER_CONTROLLER 1
 
-// CONVERSION MACROS
+/* EC REGISTER MAPPINGS */
+struct ec_data {
+  struct {
+    u8 get_fan_speed;
+    u8 controller;
+    u8 set_fan1_speed;
+    u8 set_fan2_speed;
+  } offsets;
+  struct {
+    u8 bios_controller;
+    u8 user_controller;
+  } controllers;
+};
+
+static const struct ec_data type1_ec = {
+    .offsets.get_fan_speed = 0x11,
+    .offsets.controller = 0x15,
+    .offsets.set_fan1_speed = 0x19,
+    .offsets.set_fan2_speed = 0x19,
+    .controllers.bios_controller = 0x00,
+    .controllers.user_controller = 0x01,
+};
+
+static const struct ec_data type2_ec = {
+    .offsets.get_fan_speed = 0x2E,
+    .offsets.controller = 0x62,
+    .offsets.set_fan1_speed = 0x34,
+    .offsets.set_fan2_speed = 0x35,
+    .controllers.bios_controller = 0x00,
+    .controllers.user_controller = 0x06,
+};
+
+/* Currently active board's EC mappings data */
+static struct ec_data *ec;
+
+/* Conversion macros */
 #define BYTE_TO_RPM(byte) ((byte) * 100)
 #define RPM_TO_BYTE(rpm) ((rpm) / 100)
 
-// IOCTL HANDLER COMMANDS
+/* IOCTL command handlers */
 #define PANKHA_MAGIC 'P'
 #define IOCTL_GET_FAN_SPEED _IOR(PANKHA_MAGIC, 1, int)
 #define IOCTL_GET_CONTROLLER _IOR(PANKHA_MAGIC, 2, int)
@@ -51,6 +80,7 @@ const struct dmi_system_id pankha_whitelist[] = {
             {
                 DMI_MATCH(DMI_BOARD_NAME, "8C78"),
             },
+        .driver_data = (void *)&type1_ec,
     },
     {
         .ident = "HP Omen 16-wf0xxx",
@@ -58,6 +88,7 @@ const struct dmi_system_id pankha_whitelist[] = {
             {
                 DMI_MATCH(DMI_BOARD_NAME, "8BAB"),
             },
+        .driver_data = (void *)&type1_ec,
     },
     {
         .ident = "HP Omen 16-xd0015AX",
@@ -65,21 +96,23 @@ const struct dmi_system_id pankha_whitelist[] = {
             {
                 DMI_MATCH(DMI_BOARD_NAME, "8BCD"),
             },
+        .driver_data = (void *)&type1_ec,
     },
     {}};
 
-// HELPER FUNCTION DECLARATIONS
+/* Helper function declarations */
 int _int_get_fan_speed(void);
 int get_fan_speed(int __user *addr);
 int get_controller(int __user *addr);
 int set_controller(int controller);
 int set_fan_speed(int speed);
 
-// HELPER FUNCTION DEFINITIONS
+/* Helper funtion definitions */
 int _int_get_fan_speed(void) {
   u8 byte;
   int err, speed;
-  err = ec_read(REG_GET_FAN_SPEED, &byte);
+
+  err = ec_read(ec->offsets.get_fan_speed, &byte);
   if (err) {
     pr_err("[pankha] error reading fan speed\n");
     return -EIO;
@@ -90,6 +123,7 @@ int _int_get_fan_speed(void) {
 
 int get_fan_speed(int __user *addr) {
   int speed, ret;
+
   ret = _int_get_fan_speed();
   if (ret < 0)
     return ret;
@@ -105,7 +139,8 @@ int get_fan_speed(int __user *addr) {
 int get_controller(int __user *addr) {
   u8 byte;
   int err, ret;
-  err = ec_read(REG_CONTROLLER, &byte);
+
+  err = ec_read(ec->offsets.controller, &byte);
   if (err) {
     pr_err("[pankha] error reading controller\n");
     return err;
@@ -120,7 +155,9 @@ int get_controller(int __user *addr) {
 
 int set_controller(int controller) {
   int err, res, speed;
-  if (controller != BIOS_CONTROLLER && controller != USER_CONTROLLER) {
+
+  if (controller != ec->controllers.bios_controller &&
+      controller != ec->controllers.user_controller) {
     pr_err("[pankha] invalid controller\n");
     return -EINVAL;
   }
@@ -129,7 +166,7 @@ int set_controller(int controller) {
    * user-controlled fan speed register before changing the controller as the
    * fan speed may be invalid, leading to over/under performing fans.
    */
-  if (controller == USER_CONTROLLER) {
+  if (controller == ec->controllers.user_controller) {
     res = _int_get_fan_speed();
     if (res < 0)
       return res;
@@ -138,7 +175,7 @@ int set_controller(int controller) {
     if (err)
       return err;
   }
-  err = ec_write(REG_CONTROLLER, controller);
+  err = ec_write(ec->offsets.controller, controller);
   if (err) {
     pr_err("[pankha] failed to change controller\n");
     return err;
@@ -149,14 +186,20 @@ int set_controller(int controller) {
 int set_fan_speed(int speed) {
   u8 byte;
   int err;
+
   if (speed < 0 || MAX_FAN_SPEED < speed) {
     pr_err("[pankha] invalid fan speed range\n");
     return -EINVAL;
   }
   byte = RPM_TO_BYTE(speed);
-  err = ec_write(REG_SET_FAN_SPEED, byte);
+  err = ec_write(ec->offsets.set_fan1_speed, byte);
   if (err) {
-    pr_err("[pankha] failed to set fan speed\n");
+    pr_err("[pankha] failed to set fan1 speed\n");
+    return err;
+  }
+  err = ec_write(ec->offsets.set_fan2_speed, byte);
+  if (err) {
+    pr_err("[pankha] failed to set fan2 speed\n");
     return err;
   }
   return 0;
@@ -165,6 +208,7 @@ int set_fan_speed(int speed) {
 static long pankha_ioctl(struct file *fp, unsigned int cmd, unsigned long arg) {
   int err;
   err = 0;
+
   mutex_lock(&pankha_mutex);
   switch (cmd) {
   case IOCTL_GET_FAN_SPEED:
@@ -198,12 +242,16 @@ out:
 }
 
 static int __init pankha_init(void) {
+  const struct dmi_system_id *board;
   int ret;
-  if (!dmi_check_system(pankha_whitelist)) {
+
+  board = dmi_first_match(pankha_whitelist);
+  if (!board) {
     pr_err("[pankha] unsupported device: %s\n",
            dmi_get_system_info(DMI_BOARD_NAME));
     return -ENODEV;
   }
+  ec = board->driver_data;
   misc = kzalloc(sizeof(struct miscdevice), GFP_KERNEL);
   if (misc == NULL) {
     pr_err("[pankha] failed to allocate memory for miscdevice\n");
