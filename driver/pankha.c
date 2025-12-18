@@ -106,6 +106,14 @@ const struct dmi_system_id pankha_whitelist[] = {
             },
         .driver_data = (void *)&type2_ec,
     },
+    {
+        .ident = "HP Omen Transcend 14-fb0xxx",
+        .matches =
+            {
+                DMI_MATCH(DMI_BOARD_NAME, "8C58"),
+            },
+        .driver_data = (void *)&type2_ec,
+    },
     {}};
 
 /* Helper function declarations */
