@@ -63,6 +63,7 @@ static struct ec_data *ec;
 /* Conversion macros */
 #define BYTE_TO_RPM(byte) ((byte) * 100)
 #define RPM_TO_BYTE(rpm) ((rpm) / 100)
+#define BYTE_PERCENT_TO_RPM(byte) ((byte) * MAX_FAN_SPEED / 100)
 
 /* IOCTL command handlers */
 #define PANKHA_MAGIC 'P'
@@ -133,7 +134,10 @@ int _int_get_fan_speed(void) {
     pr_err("[pankha] error reading fan speed\n");
     return -EIO;
   }
-  speed = BYTE_TO_RPM(byte);
+  if (ec == &type2_ec)
+    speed = BYTE_PERCENT_TO_RPM(byte);
+  else
+   speed = BYTE_TO_RPM(byte);
   return speed;
 }
 
