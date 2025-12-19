@@ -63,6 +63,7 @@ static struct ec_data *ec;
 /* Conversion macros */
 #define BYTE_TO_RPM(byte) ((byte) * 100)
 #define RPM_TO_BYTE(rpm) ((rpm) / 100)
+#define BYTE_PERCENT_TO_RPM(byte) ((byte) * MAX_FAN_SPEED / 100)
 
 /* IOCTL command handlers */
 #define PANKHA_MAGIC 'P'
@@ -106,6 +107,14 @@ const struct dmi_system_id pankha_whitelist[] = {
             },
         .driver_data = (void *)&type2_ec,
     },
+    {
+        .ident = "HP Omen Transcend 14-fb0xxx",
+        .matches =
+            {
+                DMI_MATCH(DMI_BOARD_NAME, "8C58"),
+            },
+        .driver_data = (void *)&type2_ec,
+    },
     {}};
 
 /* Helper function declarations */
@@ -125,7 +134,10 @@ int _int_get_fan_speed(void) {
     pr_err("[pankha] error reading fan speed\n");
     return -EIO;
   }
-  speed = BYTE_TO_RPM(byte);
+  if (ec == &type2_ec)
+    speed = BYTE_PERCENT_TO_RPM(byte);
+  else
+   speed = BYTE_TO_RPM(byte);
   return speed;
 }
 
