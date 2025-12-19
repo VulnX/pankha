@@ -10,12 +10,13 @@ A low-level utility for manual fan speed control on the `HP OMEN 16 Gaming Lapto
 
 ## Supported Devices
 
-| Device           | DMI Board ID | Tested by     |
-| ---------------- | ------------ | ------------- |
-| Omen 16-wf1xxx   | `8C78`       | @VulnX        |
-| Omen 16-wf0xxx   | `8BAB`       | @PXG-XPG      |
-| Omen 16-xd0xxx   | `8BCD`       | @varad-pisale |
-| Omen 16-ap0097ax | `8E35`       | @locomotiivo  |
+| Device                   | DMI Board ID | Tested by           |
+| ------------------------ | ------------ | ------------------- |
+| Omen 16-wf1xxx           | `8C78`       | @VulnX              |
+| Omen 16-wf0xxx           | `8BAB`       | @PXG-XPG            |
+| Omen 16-xd0xxx           | `8BCD`       | @varad-pisale       |
+| Omen 16-ap0097ax         | `8E35`       | @locomotiivo        |
+| Omen Transcend 14-fb0xxx | `8C58`       | @DistortedDragon1o4 |
 
 >  NOTE: If your board is not listed above and you want support to be added, feel free to open an issue.
 
