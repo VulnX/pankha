@@ -115,6 +115,14 @@ const struct dmi_system_id pankha_whitelist[] = {
             },
         .driver_data = (void *)&type2_ec,
     },
+    {
+        .ident = "HP Omen 15-en1xxx",
+        .matches =
+            {
+                DMI_MATCH(DMI_BOARD_NAME, "88D2"),
+            },
+        .driver_data = (void *)&type2_ec,
+    },
     {}};
 
 /* Helper function declarations */
@@ -137,7 +145,7 @@ int _int_get_fan_speed(void) {
   if (ec == &type2_ec)
     speed = BYTE_PERCENT_TO_RPM(byte);
   else
-   speed = BYTE_TO_RPM(byte);
+    speed = BYTE_TO_RPM(byte);
   return speed;
 }
 
