@@ -131,6 +131,14 @@ const struct dmi_system_id pankha_whitelist[] = {
             },
         .driver_data = (void *)&type1_ec,
     },
+    {
+        .ident = "HP Omen 16-ae0xxx",
+        .matches =
+            {
+                DMI_MATCH(DMI_BOARD_NAME, "8CC0"),
+            },
+        .driver_data = (void *)&type1_ec,
+    },
     {}};
 
 /* Helper function declarations */
