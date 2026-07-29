@@ -20,6 +20,8 @@ A low-level utility for manual fan speed control on the `HP OMEN 16 Gaming Lapto
 | HP Omen 15-en1xxx        | `88D2`       | @GosnatIron         |
 | HP Omen 16-wf0000n1      | `8BAC`       | @SlopeSlayer910     |
 | HP Omen 16-ae0xxx        | `8CC0`       | @LJY559520          |
+| HP OMEN 16-wd0xxx        | `8BA9`       | @SuryanshSingh123   |
+
 
 >  NOTE: If your board is not listed above and you want support to be added, feel free to open an issue.
 
